@@ -10,14 +10,28 @@
 #include "std_msgs/Int32.h"
 #include <deque>
 
-class RMS_Queue_Manager {
+class RMS_Queue_Manager
+{
 public:
   /**
-  * \brief Constructor
-  * This calls the constructors for the publishers and subscribers
+  * \brief The number of seconds per loop. This is how often we publish the queue
   */
-  static const int LOOP_RATE = 50;
+  static const int LOOP_RATE = 10;
+  /**
+  * \brief this number of counts/loops each user gets before getting kicked out
+  * total time per user is LOOP_RATE * COUNTS_PER_TRIAL
+  */
+  static const int COUNTS_PER_TRIAL = 3;
+
+  /**
+  * the queue to hold the user_ids in order of the queue
+  */
   std::deque<int> queue_;
+
+  /**
+  * keeps track of the time left for the active user
+  */
+  int countdown_;
 
   /**
   * \brief Constructor
@@ -25,17 +39,19 @@ public:
   */
   RMS_Queue_Manager();
 
+  void remove_user(std::string user_id);
+
 private:
 
-  int countdown_;
+  /**
+  * \brief Remove a user to the deque
+  */
+  void on_dequeue(const std_msgs::Int32::ConstPtr &msg);
 
-  void reset_countdown();
-
-  void decrement_countdown();
-
-  void on_dequeue(const std_msgs::Int32::ConstPtr& msg);
-
-  void on_enqueue(const std_msgs::Int32::ConstPtr& msg);
+  /**
+  * \brief Add a user to the deque
+  */
+  void on_enqueue(const std_msgs::Int32::ConstPtr &msg);
 
 };
 
