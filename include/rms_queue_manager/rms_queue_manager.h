@@ -23,6 +23,15 @@ public:
   */
   static const int COUNTS_PER_TRIAL = 3;
 
+
+  /**
+  * \brief Constructor
+  *	This starts the server, waits for param server and create clickable parking spots
+  */
+  RMS_Queue_Manager();
+
+private:
+
   /**
   * the queue to hold the user_ids in order of the queue
   */
@@ -32,16 +41,6 @@ public:
   * keeps track of the time left for the active user
   */
   int countdown_;
-
-  /**
-  * \brief Constructor
-  *	This starts the server, waits for param server and create clickable parking spots
-  */
-  RMS_Queue_Manager();
-
-  void remove_user(std::string user_id);
-
-private:
 
   /**
   * \brief Remove a user to the deque
