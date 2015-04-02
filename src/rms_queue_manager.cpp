@@ -15,8 +15,8 @@ int main(int argc, char *argv[])
 }
 
 RMS_Queue_Manager::RMS_Queue_Manager()
-      : countdown_(COUNTS_PER_TRIAL),
-       run_countdown(false)
+    : countdown_(COUNTS_PER_TRIAL),
+      run_countdown(false)
 {
 
   ros::NodeHandle n;
@@ -41,39 +41,56 @@ RMS_Queue_Manager::RMS_Queue_Manager()
     //copy the queue into the queue message
 
     std::deque<int>::iterator it = queue_.begin();
-    int position=0;
+    int position = 0;
     while (it != queue_.end())
     {
       int user_id = *(it++);
-      
+
       rms_queue_manager::UserStatus user_status;
       user_status.user_id = user_id;
 
       //calculate wait time in seconds
-      int t = LOOP_RATE * (COUNTS_PER_TRIAL * (position - 1) + countdown_);
+      int t;
+      if (position > 0)
+      {
+        t = LOOP_RATE * (COUNTS_PER_TRIAL * (position - 1) + countdown_);
+      }
+      else
+      {
+        t = 0;
+      }
+
+
       ros::Duration wait_time(t);
       user_status.wait_time = wait_time;
       rms_queue_message.queue.push_back(user_status);
+
+      position++;
+
       ROS_INFO("user %i, timer %i", user_status.user_id, t);
     }
 
     //publish the queue message
     queue_pub.publish(rms_queue_message);
 
-    ROS_INFO("countdown: %i\n",countdown_);
+    ROS_INFO("countdown: %i\n", countdown_);
 
     //only run the countdown when the queue isn't empty
-    if (run_countdown){
+    if (run_countdown)
+    {
       //when you countdown has reached 0, reset it and remove the first/current user
       if (!countdown_)
       {
         countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
         queue_.pop_front(); //bye bye!
 
-        //stop counting if the queue is now empty
-        if (queue_.empty()){
-          run_countdown = false;
-        }
+        
+      }
+      
+      //stop counting if the queue is now empty
+      if (queue_.empty()){
+        countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
+        run_countdown = false; 
       }
 
       countdown_--;
@@ -97,6 +114,8 @@ void RMS_Queue_Manager::on_dequeue(const std_msgs::Int32::ConstPtr &msg)
     {
       ROS_INFO("removing user %i", user_id);
       queue_.erase(it);
+      //rest time for the next user! (probably not smart because race condition, but it shouldn't matter)
+      countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
       return;
     }
     it++;

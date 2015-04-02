@@ -18,13 +18,12 @@ public:
   /**
   * \brief The number of seconds per loop. This is how often we publish the queue
   */
-  static const int LOOP_RATE = 1;
+  static const int LOOP_RATE = 10;
   /**
   * \brief this number of counts/loops each user gets before getting kicked out
   * total time per user is LOOP_RATE * COUNTS_PER_TRIAL
   */
-  static const int COUNTS_PER_TRIAL = 15;
-
+  static const int COUNTS_PER_TRIAL = 300;
 
   /**
   * \brief Constructor
