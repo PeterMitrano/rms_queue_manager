@@ -15,12 +15,14 @@ int main(int argc, char *argv[])
 }
 
 RMS_Queue_Manager::RMS_Queue_Manager()
+      : countdown_(COUNTS_PER_TRIAL),
+       run_countdown(false)
 {
 
   ros::NodeHandle n;
 
   //sent out queue
-  ros::Publisher queue_pub = n.advertise<std_msgs::Int32MultiArray>("rms_queue", 1000);
+  ros::Publisher queue_pub = n.advertise<rms_queue_manager::RMSQueue>("rms_queue", 1000);
   //add user to queue when someone new visits the website
   ros::Subscriber enqueue_sub = n.subscribe("rms_enqueue", 1000, &RMS_Queue_Manager::on_enqueue, this);
   //remove user from queue if they're out of time or if they leave
@@ -34,28 +36,47 @@ RMS_Queue_Manager::RMS_Queue_Manager()
   while (ros::ok())
   {
 
-    std_msgs::Int32MultiArray queue_message;
+    rms_queue_manager::RMSQueue rms_queue_message;
 
     //copy the queue into the queue message
 
     std::deque<int>::iterator it = queue_.begin();
+    int position=0;
     while (it != queue_.end())
     {
       int user_id = *(it++);
-//      ROS_INFO("user %i is in the queue", user_id);
-      queue_message.data.push_back(user_id);
+      
+      rms_queue_manager::UserStatus user_status;
+      user_status.user_id = user_id;
+
+      //calculate wait time in seconds
+      int t = LOOP_RATE * (COUNTS_PER_TRIAL * (position - 1) + countdown_);
+      ros::Duration wait_time(t);
+      user_status.wait_time = wait_time;
+      rms_queue_message.queue.push_back(user_status);
+      ROS_INFO("user %i, timer %i", user_status.user_id, t);
     }
 
     //publish the queue message
-    queue_pub.publish(queue_message);
+    queue_pub.publish(rms_queue_message);
 
-    countdown_--;
+    ROS_INFO("countdown: %i\n",countdown_);
 
-    //when you countdown has reached 0, reset it and remove the first/current user
-    if (!countdown_)
-    {
-      countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
-      queue_.pop_front(); //bye bye!
+    //only run the countdown when the queue isn't empty
+    if (run_countdown){
+      //when you countdown has reached 0, reset it and remove the first/current user
+      if (!countdown_)
+      {
+        countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
+        queue_.pop_front(); //bye bye!
+
+        //stop counting if the queue is now empty
+        if (queue_.empty()){
+          run_countdown = false;
+        }
+      }
+
+      countdown_--;
     }
 
     ros::spinOnce();
@@ -100,5 +121,9 @@ void RMS_Queue_Manager::on_enqueue(const std_msgs::Int32::ConstPtr &msg)
   }
 
   //add that id to the back of the deque
+  ROS_INFO("adding user %i", user_id);
   queue_.push_back(user_id);
+
+  //start countin down
+  run_countdown = true;
 }
