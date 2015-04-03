@@ -23,6 +23,8 @@ RMS_Queue_Manager::RMS_Queue_Manager()
 
   //sent out queue
   ros::Publisher queue_pub = n.advertise<rms_queue_manager::RMSQueue>("rms_queue", 1000);
+  //kick people out
+  ros::Publisher pop_front_pub = n.advertise<std_msgs::Int32>("rms_pop_front", 1000);
   //add user to queue when someone new visits the website
   ros::Subscriber enqueue_sub = n.subscribe("rms_enqueue", 1000, &RMS_Queue_Manager::on_enqueue, this);
   //remove user from queue if they're out of time or if they leave
@@ -82,8 +84,10 @@ RMS_Queue_Manager::RMS_Queue_Manager()
       if (!countdown_)
       {
         countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
+        std_msgs::Int32 pop_front_msg;
+        pop_front_msg.data = queue_.front();
+        pop_front_pub.publish(pop_front_msg);
         queue_.pop_front(); //bye bye!
-
         
       }
       
@@ -114,7 +118,8 @@ void RMS_Queue_Manager::on_dequeue(const std_msgs::Int32::ConstPtr &msg)
     {
       ROS_INFO("removing user %i", user_id);
       queue_.erase(it);
-      //rest time for the next user! (probably not smart because race condition, but it shouldn't matter)
+      //when first user leaves rest time for the next user! (probably not smart because race condition, but it shouldn't matter)
+      if (it == queue_.begin())
       countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
       return;
     }
