@@ -117,10 +117,12 @@ void RMS_Queue_Manager::on_dequeue(const std_msgs::Int32::ConstPtr &msg)
     if (user_id == *(it))
     {
       ROS_INFO("removing user %i", user_id);
-      queue_.erase(it);
+
       //when first user leaves rest time for the next user! (probably not smart because race condition, but it shouldn't matter)
-      if (it == queue_.begin())
-      countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
+      if (it == queue_.begin()){
+        countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
+      }
+      queue_.erase(it);
       return;
     }
     it++;
