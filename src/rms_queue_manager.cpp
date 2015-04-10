@@ -26,9 +26,7 @@ RMS_Queue_Manager::RMS_Queue_Manager()
   //kick people out
   ros::Publisher pop_front_pub = n.advertise<std_msgs::Int32>("rms_pop_front", 1000);
   //add user to queue when someone new visits the website
-  ros::Subscriber enqueue_sub = n.subscribe("rms_enqueue", 1000, &RMS_Queue_Manager::on_enqueue, this);
-  //remove user from queue if they're out of time or if they leave
-  ros::Subscriber dequeue_sub = n.subscribe("rms_dequeue", 1000, &RMS_Queue_Manager::on_dequeue, this);
+  ros::ServiceServer update_queue_serv = n.advertiseService("update_queue", &RMS_Queue_Manager::on_update_queue, this);
 
   //loop at the rate of LOOP_RATE, and publish queue
   ros::Rate r(RMS_Queue_Manager::LOOP_RATE);
@@ -88,13 +86,14 @@ RMS_Queue_Manager::RMS_Queue_Manager()
         pop_front_msg.data = queue_.front();
         pop_front_pub.publish(pop_front_msg);
         queue_.pop_front(); //bye bye!
-        
+
       }
-      
+
       //stop counting if the queue is now empty
-      if (queue_.empty()){
+      if (queue_.empty())
+      {
         countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
-        run_countdown = false; 
+        run_countdown = false;
       }
 
       countdown_--;
@@ -105,10 +104,11 @@ RMS_Queue_Manager::RMS_Queue_Manager()
   }
 }
 
-void RMS_Queue_Manager::on_dequeue(const std_msgs::Int32::ConstPtr &msg)
+bool RMS_Queue_Manager::on_update_queue(rms_queue_manager::UpdateQueue::Request &req,
+    rms_queue_manager::UpdateQueue::Response &res)
 {
   //get the user Id from the message
-  int user_id = msg->data;
+  int user_id = req.user_id;
 
   //iterate over the queue, and erase the user that mathces the user_id in the message
   std::deque<int>::iterator it = queue_.begin();
@@ -116,40 +116,28 @@ void RMS_Queue_Manager::on_dequeue(const std_msgs::Int32::ConstPtr &msg)
   {
     if (user_id == *(it))
     {
-      ROS_INFO("removing user %i", user_id);
-
-      //when first user leaves rest time for the next user! (probably not smart because race condition, but it shouldn't matter)
-      if (it == queue_.begin()){
-        countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
+      if (!req.enqueue)
+      {
+        ROS_INFO("removing user %i", user_id);
+        //when first user leaves rest time for the next user!
+        if (it == queue_.begin())
+        {
+          countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
+        }
+        queue_.erase(it);
       }
-      queue_.erase(it);
-      return;
+      return true;
     }
     it++;
   }
 
-}
+  if (req.enqueue){
+    //add that id to the back of the deque
+    ROS_INFO("adding user %i", user_id);
+    queue_.push_back(user_id);
 
-void RMS_Queue_Manager::on_enqueue(const std_msgs::Int32::ConstPtr &msg)
-{
-  //get the user Id from the message
-  int user_id = msg->data;
-
-  //return without adding if the user id already exists
-  std::deque<int>::iterator it = queue_.begin();
-  while (it != queue_.end())
-  {
-    if (user_id == *it)
-    {
-      return;
-    }
-    it++;
+    //start counting down
+    run_countdown = true;
   }
-
-  //add that id to the back of the deque
-  ROS_INFO("adding user %i", user_id);
-  queue_.push_back(user_id);
-
-  //start countin down
-  run_countdown = true;
+  return true;
 }

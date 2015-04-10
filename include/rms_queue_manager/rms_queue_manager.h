@@ -8,6 +8,7 @@
 #include "ros/ros.h"
 #include <rms_queue_manager/RMSQueue.h> //custom message file with array of UserStatus
 #include <rms_queue_manager/UserStatus.h> //custom message file with user_id and wait_time
+#include <rms_queue_manager/UpdateQueue.h>
 #include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Int32.h"
 #include <deque>
@@ -34,7 +35,7 @@ public:
 private:
 
   /**
-  * the queue to hold the user_ids in order of the queue
+  * the queue to hold the user_ids and wait times in order.
   */
   std::deque<int> queue_;
 
@@ -49,14 +50,10 @@ private:
   bool run_countdown;
 
   /**
-  * \brief Remove a user to the deque
+  * \brief Add or remove a user to the deque
   */
-  void on_dequeue(const std_msgs::Int32::ConstPtr &msg);
-
-  /**
-  * \brief Add a user to the deque
-  */
-  void on_enqueue(const std_msgs::Int32::ConstPtr &msg);
+  bool on_update_queue(rms_queue_manager::UpdateQueue::Request &req,
+      rms_queue_manager::UpdateQueue::Response &res);
 
 };
 

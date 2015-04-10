@@ -24,6 +24,12 @@ add_message_files(
   RMSQueue.msg
 )
 
+## Services
+add_service_files(
+  FILES
+  UpdateQueue.srv
+)
+
 generate_messages(
   DEPENDENCIES
   std_msgs
