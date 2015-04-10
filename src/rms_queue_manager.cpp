@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 }
 
 RMS_Queue_Manager::RMS_Queue_Manager()
-    : countdown_(COUNTS_PER_TRIAL),
+    : countdown_(DEFAULT_TRIAL),
       run_countdown(false)
 {
 
@@ -40,20 +40,21 @@ RMS_Queue_Manager::RMS_Queue_Manager()
 
     //copy the queue into the queue message
 
-    std::deque<int>::iterator it = queue_.begin();
+    std::deque<std::pair<int, int> >::iterator it = queue_.begin();
     int position = 0;
+    int t = 0;
     while (it != queue_.end())
     {
-      int user_id = *(it++);
+      std::pair<int, int> user = *(it++);
 
       rms_queue_manager::UserStatus user_status;
-      user_status.user_id = user_id;
+      user_status.user_id = user.first;
 
       //calculate wait time in seconds
       int t;
       if (position > 0)
       {
-        t = LOOP_RATE * (COUNTS_PER_TRIAL * (position - 1) + countdown_);
+        t += user.second;
       }
       else
       {
@@ -81,18 +82,17 @@ RMS_Queue_Manager::RMS_Queue_Manager()
       //when you countdown has reached 0, reset it and remove the first/current user
       if (!countdown_)
       {
-        countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
         std_msgs::Int32 pop_front_msg;
-        pop_front_msg.data = queue_.front();
+        pop_front_msg.data = queue_.front().first;
         pop_front_pub.publish(pop_front_msg);
         queue_.pop_front(); //bye bye!
-
+        //reset count down to next users trial time
+        countdown_ = queue_.begin()->second;
       }
 
       //stop counting if the queue is now empty
       if (queue_.empty())
       {
-        countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
         run_countdown = false;
       }
 
@@ -109,12 +109,13 @@ bool RMS_Queue_Manager::on_update_queue(rms_queue_manager::UpdateQueue::Request 
 {
   //get the user Id from the message
   int user_id = req.user_id;
+  int study_time = req.study_time;
 
   //iterate over the queue, and erase the user that mathces the user_id in the message
-  std::deque<int>::iterator it = queue_.begin();
+  std::deque<std::pair<int, int> >::iterator it = queue_.begin();
   while (it != queue_.end())
   {
-    if (user_id == *(it))
+    if (user_id == (*it).first)
     {
       if (!req.enqueue)
       {
@@ -122,19 +123,26 @@ bool RMS_Queue_Manager::on_update_queue(rms_queue_manager::UpdateQueue::Request 
         //when first user leaves rest time for the next user!
         if (it == queue_.begin())
         {
-          countdown_ = RMS_Queue_Manager::COUNTS_PER_TRIAL;
+          queue_.pop_front();
+          countdown_ = queue_.front().second;
+        } else
+        {
+          queue_.erase(it);
         }
-        queue_.erase(it);
       }
       return true;
     }
     it++;
   }
 
-  if (req.enqueue){
+  if (req.enqueue)
+  {
+
+    study_time = study_time ? study_time : RMS_Queue_Manager::DEFAULT_TRIAL;
+    ROS_INFO("adding user %i, %i", user_id,study_time);
     //add that id to the back of the deque
-    ROS_INFO("adding user %i", user_id);
-    queue_.push_back(user_id);
+    queue_.push_back(std::pair<int, int>(user_id, study_time));
+    countdown_ = study_time;
 
     //start counting down
     run_countdown = true;

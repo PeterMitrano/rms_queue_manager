@@ -17,14 +17,14 @@ class RMS_Queue_Manager
 {
 public:
   /**
-  * \brief The number of seconds per loop. This is how often we publish the queue
+  * \brief The frequency of the loop in (1/seconds). This is how often we publish the queue
   */
   static const int LOOP_RATE = 1;
+
   /**
-  * \brief this number of counts/loops each user gets before getting kicked out
-  * total time per user is LOOP_RATE * COUNTS_PER_TRIAL
+  * \brief default length of trial is 300. This will always be overwritten if the enqueue
   */
-  static const int COUNTS_PER_TRIAL = 30;
+  static const int DEFAULT_TRIAL = 300;
 
   /**
   * \brief Constructor
@@ -37,7 +37,7 @@ private:
   /**
   * the queue to hold the user_ids and wait times in order.
   */
-  std::deque<int> queue_;
+  std::deque<std::pair<int, int> > queue_;
 
   /**
   * keeps track of the time left for the active user
