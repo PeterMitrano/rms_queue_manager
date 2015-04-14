@@ -1,4 +1,4 @@
 uint32 user_id # user id
 bool enqueue #true to enqueue, false to dequeue
-uint32 study_time # time this user gets if enqueing
+uint32 study_time # time in seconds this user gets if enqueing
 ---

@@ -22,9 +22,9 @@ public:
   static const int LOOP_RATE = 1;
 
   /**
-  * \brief default length of trial is 300. This will always be overwritten if the enqueue
+  * \brief default length of trial is 600 seconds. This will always be overwritten if the enqueue
   */
-  static const int DEFAULT_TRIAL = 300;
+  static const int DEFAULT_TRIAL = 600;
 
   /**
   * \brief Constructor

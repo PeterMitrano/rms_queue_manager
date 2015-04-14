@@ -42,7 +42,7 @@ RMS_Queue_Manager::RMS_Queue_Manager()
 
     std::deque<std::pair<int, int> >::iterator it = queue_.begin();
     int position = 0;
-    int t = 0;
+    int t;
     while (it != queue_.end())
     {
       std::pair<int, int> user = *(it++);
@@ -51,16 +51,14 @@ RMS_Queue_Manager::RMS_Queue_Manager()
       user_status.user_id = user.first;
 
       //calculate wait time in seconds
-      int t;
+      
       if (position > 0)
       {
-        t += user.second;
+        t = countdown_ + (position - 1) * user.second;
       }
-      else
-      {
+      else if (position == 0){
         t = 0;
       }
-
 
       ros::Duration wait_time(t);
       user_status.wait_time = wait_time;
@@ -68,7 +66,7 @@ RMS_Queue_Manager::RMS_Queue_Manager()
 
       position++;
 
-      ROS_INFO("user %i, timer %i", user_status.user_id, t);
+      ROS_INFO("user %i", user_status.user_id);
     }
 
     //publish the queue message
@@ -111,7 +109,7 @@ bool RMS_Queue_Manager::on_update_queue(rms_queue_manager::UpdateQueue::Request 
   int user_id = req.user_id;
   int study_time = req.study_time;
 
-  //iterate over the queue, and erase the user that mathces the user_id in the message
+  //iterate over the queue, and erase the user that matches the user_id in the message
   std::deque<std::pair<int, int> >::iterator it = queue_.begin();
   while (it != queue_.end())
   {
@@ -119,12 +117,12 @@ bool RMS_Queue_Manager::on_update_queue(rms_queue_manager::UpdateQueue::Request 
     {
       if (!req.enqueue)
       {
-        ROS_INFO("removing user %i", user_id);
-        //when first user leaves rest time for the next user!
+        //when first user leaves reset time for the next user!
         if (it == queue_.begin())
         {
           queue_.pop_front();
-          countdown_ = queue_.front().second;
+          int next_study_time = queue_.front().second;
+          countdown_ = next_study_time ? next_study_time : RMS_Queue_Manager::DEFAULT_TRIAL;;
         } else
         {
           queue_.erase(it);
@@ -139,7 +137,6 @@ bool RMS_Queue_Manager::on_update_queue(rms_queue_manager::UpdateQueue::Request 
   {
 
     study_time = study_time ? study_time : RMS_Queue_Manager::DEFAULT_TRIAL;
-    ROS_INFO("adding user %i, %i", user_id,study_time);
     //add that id to the back of the deque
     queue_.push_back(std::pair<int, int>(user_id, study_time));
     countdown_ = study_time;
