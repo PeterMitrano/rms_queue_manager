@@ -25,6 +25,8 @@ RMS_Queue_Manager::RMS_Queue_Manager()
   ros::Publisher queue_pub = n.advertise<rms_queue_manager::RMSQueue>("rms_queue", 1000);
   //kick people out
   ros::Publisher pop_front_pub = n.advertise<std_msgs::Int32>("rms_pop_front", 1000);
+  //announce when people are active
+  ros::Publisher now_active_pub = n.advertise<std_msgs::Int32>("rms_now_active", 1000);
   //add user to queue when someone new visits the website
   ros::ServiceServer update_queue_serv = n.advertiseService("update_queue", &RMS_Queue_Manager::on_update_queue, this);
 
@@ -36,13 +38,45 @@ RMS_Queue_Manager::RMS_Queue_Manager()
   while (ros::ok())
   {
 
-    rms_queue_manager::RMSQueue rms_queue_message;
+    ROS_INFO("countdown: %i\n", countdown_);
 
-    //copy the queue into the queue message
+    //only run the countdown when the queue isn't empty
+    if (run_countdown)
+    {
+      //when you countdown has reached 0, reset it and remove the first/current user
+      if (!countdown_)
+      {
+	//let the first user know it's being removed, then remove it
+        std_msgs::Int32 pop_front_msg;
+        pop_front_msg.data = queue_.front().first;
+        pop_front_pub.publish(pop_front_msg);
+        queue_.pop_front(); //bye bye!
+       
+	//now that first user is gone, tell the new first user you're up! 
+        std_msgs::Int32 now_active_msg;
+        now_active_msg.data = queue_.front().first;
+        now_active_pub.publish(now_active_msg);
+        
+        //reset count down to next users trial time
+        countdown_ = queue_.begin()->second;
+      }
+
+      //stop counting if the queue is now empty
+      if (queue_.empty())
+      {
+        run_countdown = false;
+      }
+
+      countdown_--;
+    }
+
+    rms_queue_manager::RMSQueue rms_queue_message;
 
     std::deque<std::pair<int, int> >::iterator it = queue_.begin();
     int position = 0;
     int t;
+
+    //create queue to publish
     while (it != queue_.end())
     {
       std::pair<int, int> user = *(it++);
@@ -57,7 +91,7 @@ RMS_Queue_Manager::RMS_Queue_Manager()
         t = countdown_ + (position - 1) * user.second;
       }
       else if (position == 0){
-        t = 0;
+        t = -1;
       }
 
       ros::Duration wait_time(t);
@@ -71,31 +105,6 @@ RMS_Queue_Manager::RMS_Queue_Manager()
 
     //publish the queue message
     queue_pub.publish(rms_queue_message);
-
-    ROS_INFO("countdown: %i\n", countdown_);
-
-    //only run the countdown when the queue isn't empty
-    if (run_countdown)
-    {
-      //when you countdown has reached 0, reset it and remove the first/current user
-      if (!countdown_)
-      {
-        std_msgs::Int32 pop_front_msg;
-        pop_front_msg.data = queue_.front().first;
-        pop_front_pub.publish(pop_front_msg);
-        queue_.pop_front(); //bye bye!
-        //reset count down to next users trial time
-        countdown_ = queue_.begin()->second;
-      }
-
-      //stop counting if the queue is now empty
-      if (queue_.empty())
-      {
-        run_countdown = false;
-      }
-
-      countdown_--;
-    }
 
     ros::spinOnce();
     r.sleep();
@@ -137,6 +146,14 @@ bool RMS_Queue_Manager::on_update_queue(rms_queue_manager::UpdateQueue::Request 
   {
 
     study_time = study_time ? study_time : RMS_Queue_Manager::DEFAULT_TRIAL;
+    
+    //if the queue is empty, let the user know he's enabled
+    if (queue_.empty()){
+   	std::Int32 = now_active_msg;
+	now_active_msg.data = user_id;
+	now_active_pub.publish(now_active_msg);
+    }
+    
     //add that id to the back of the deque
     queue_.push_back(std::pair<int, int>(user_id, study_time));
     countdown_ = study_time;
