@@ -134,7 +134,7 @@ bool RMS_Queue_Manager::on_update_queue(rms_queue_manager::UpdateQueue::Request 
   {
 
     study_time = study_time ? study_time : RMS_Queue_Manager::DEFAULT_TRIAL;
-    
+ 
     //add that id to the back of the deque
     queue_.push_back(std::pair<int, int>(user_id, study_time));
     countdown_ = study_time;
