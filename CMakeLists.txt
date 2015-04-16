@@ -59,6 +59,8 @@ target_link_libraries(rms_queue_manager
    ${catkin_LIBRARIES}
 )
 
+add_dependencies(rms_queue_manager rms_queue_manager_gencpp)
+
 #############
 ## Install ##
 #############
