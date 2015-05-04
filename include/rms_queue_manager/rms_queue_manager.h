@@ -53,7 +53,7 @@ private:
   * \brief Add or remove a user to the deque
   */
   bool on_update_queue(rms_queue_manager::UpdateQueue::Request &req,
-      rms_queue_manager::UpdateQueue::Response &res);
+                       rms_queue_manager::UpdateQueue::Response &res);
 
 };
 
